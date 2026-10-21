@@ -1,0 +1,29 @@
+name: Promote dev to staging
+on:
+  workflow_dispatch:
+
+concurrency: promote
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Check fast-forward
+        run: |
+          if ! git merge-base --is-ancestor origin/staging origin/dev; then
+            echo "::error::staging has commits that are not in dev. Fast-forward not possible."
+            exit 1
+          fi
+
+      - run: git push origin origin/dev:refs/heads/staging
